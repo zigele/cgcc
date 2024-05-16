@@ -655,7 +655,7 @@ class Signal {
         let v = parseInt(getByID("speed_target").value, 10);
         targetSpeedBuffer.push(v);
         v = "4041" + v.toString(16).padStart(4, "0");
-        let ret = await ses.sendHex(v, true);
+        let ret = await ses.sendHex(v, false);
         if (ret.ok) {
             option2.series[0].data = targetSpeedBuffer.slice(-20);
             speedChart.setOption(option2, true);
@@ -698,7 +698,7 @@ class Signal {
                 }
                 targetSpeedBuffer.push(ts);
                 ts = "4041" + ts.toString(16).padStart(4, "0");
-                let ret = await ses.sendHex(ts, true);
+                let ret = await ses.sendHex(ts, false);
                 if (ret.ok) {
                     option2.series[0].data = targetSpeedBuffer.slice(-20);
                     speedChart.setOption(option2, true);
@@ -747,9 +747,9 @@ class Signal {
             for (let i = 0; i < 360; i++) {
                 buf[i] = sig.option.series[0].data[i] - 2;
             }
-            let ret = ses.sendRowArrayData([0x40, 0x42, ...buf], true);
+            let ret = ses.sendRowArrayData([0x40, 0x42, ...buf], false);
             console.log([0x40, 0x42, ...buf])
-            alert("已发送，ESP32芯片重启后生效。");
+            alert("写入ESP32芯片NVS成功。");
         } catch (error) {
             alert("写入失败" + error);
         }
@@ -766,9 +766,8 @@ class Signal {
             let buf= [0x40, 0x44,0,0];
             buf[2] = ((parseInt(document.getElementById("dac0_val").value))>>8)&0xff;
             buf[3] = (parseInt(document.getElementById("dac0_val").value))&0xff;
-            let ret = ses.sendRowArrayData(buf, true);
+            let ret = ses.sendRowArrayData(buf, false);
             console.log([0x40, 0x46,...buf])
-
         } catch (error) {
             alert("写入失败" + error);
         }
@@ -785,7 +784,7 @@ class Signal {
             let buf= [0x40, 0x45,0,0];
             buf[2] =( (parseInt(document.getElementById("dac1_val").value))>>8)&0xff;
             buf[3] = (parseInt(document.getElementById("dac1_val").value))&0xff;
-            let ret = ses.sendRowArrayData(buf, true);
+            let ret = ses.sendRowArrayData(buf, false);
             console.log([0x40, 0x46,...buf])
 
         } catch (error) {
@@ -800,9 +799,9 @@ class Signal {
             return
         }
         try {
-            let ret = ses.sendRowArrayData([0x40, 0x46], true);
+            let ret = ses.sendRowArrayData([0x40, 0x46], false);
             console.log([0x40, 0x46])
-            alert("已发送，ESP32芯片重启后生效。");
+            alert("已发送，ESP32芯片即将重启。");
         } catch (error) {
             alert("写入失败" + error);
         }
@@ -823,7 +822,7 @@ class Signal {
             }
             let ret = ses.sendRowArrayData([0x40, 0x43, ...buf], true);
             console.log([0x40, 0x42, ...buf])
-            alert("已发送，ESP32芯片重启后生效。");
+            alert("写入ESP32芯片NVS成功。");
         } catch (error) {
             alert("写入失败" + error);
         }

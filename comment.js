@@ -767,7 +767,7 @@ class Signal {
             buf[2] = ((parseInt(document.getElementById("dac0_val").value))>>8)&0xff;
             buf[3] = (parseInt(document.getElementById("dac0_val").value))&0xff;
             let ret = ses.sendRowArrayData(buf, false);
-            console.log([0x40, 0x46,...buf])
+            console.log(buf)
         } catch (error) {
             alert("写入失败" + error);
         }
@@ -785,7 +785,7 @@ class Signal {
             buf[2] =( (parseInt(document.getElementById("dac1_val").value))>>8)&0xff;
             buf[3] = (parseInt(document.getElementById("dac1_val").value))&0xff;
             let ret = ses.sendRowArrayData(buf, false);
-            console.log([0x40, 0x46,...buf])
+            console.log(buf)
 
         } catch (error) {
             alert("写入失败" + error);

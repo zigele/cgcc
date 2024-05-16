@@ -1,10 +1,465 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	
+    <meta charset="utf-8"/>
+    <meta content="IE=Edge" name="viewport"/>
+    <title>ESP32发动机信号发生器</title>
+    <link href="https://www.w3school.com.cn/lib/bs/bootstrap.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet"/>
 </head>
+
 <body>
-	<h1>Hello world $ 2017-8-13</h1>
-	<p>this is my First web site which seted up in the Github Page!</p>
+<div class="d-flex p-3 bg-light" style="min-height: 100vh">
+    <!--侧边栏 START-->
+    <div class="d-flex flex-column p-3 bg-light" style="min-width: 200px">
+        <a class="d-flex align-items-start mb-3 mb-md-0 me-md-auto link-dark text-decoration-none">
+            <svg class="bi me-2 bi-gear-wide-connected" fill="currentColor" height="16"
+                 viewBox="0 0 16 16"
+                 width="16" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7.068.727c.243-.97 1.62-.97 1.864 0l.071.286a.96.96 0 0 0 1.622.434l.205-.211c.695-.719 1.888-.03 1.613.931l-.08.284a.96.96 0 0 0 1.187 1.187l.283-.081c.96-.275 1.65.918.931 1.613l-.211.205a.96.96 0 0 0 .434 1.622l.286.071c.97.243.97 1.62 0 1.864l-.286.071a.96.96 0 0 0-.434 1.622l.211.205c.719.695.03 1.888-.931 1.613l-.284-.08a.96.96 0 0 0-1.187 1.187l.081.283c.275.96-.918 1.65-1.613.931l-.205-.211a.96.96 0 0 0-1.622.434l-.071.286c-.243.97-1.62.97-1.864 0l-.071-.286a.96.96 0 0 0-1.622-.434l-.205.211c-.695.719-1.888.03-1.613-.931l.08-.284a.96.96 0 0 0-1.186-1.187l-.284.081c-.96.275-1.65-.918-.931-1.613l.211-.205a.96.96 0 0 0-.434-1.622l-.286-.071c-.97-.243-.97-1.62 0-1.864l.286-.071a.96.96 0 0 0 .434-1.622l-.211-.205c-.719-.695-.03-1.888.931-1.613l.284.08a.96.96 0 0 0 1.187-1.186l-.081-.284c-.275-.96.918-1.65 1.613-.931l.205.211a.96.96 0 0 0 1.622-.434l.071-.286zM12.973 8.5H8.25l-2.834 3.779A4.998 4.998 0 0 0 12.973 8.5zm0-1a4.998 4.998 0 0 0-7.557-3.779l2.834 3.78h4.723zM5.048 3.967c-.03.021-.058.043-.087.065l.087-.065zm-.431.355A4.984 4.984 0 0 0 3.002 8c0 1.455.622 2.765 1.615 3.678L7.375 8 4.617 4.322zm.344 7.646.087.065-.087-.065z"/>
+            </svg>
+            <span class="fs-4">信号发生器</span>
+        </a>
+        <hr/>
+        <ul class="nav nav-pills flex-column mb-auto" id="phase_click">
+            <li class="nav-item" type="button">
+                <a class="ps-0 ms-0 nav-link link-dark" data-bs-target="#phase_pane" data-bs-toggle="pill" href="#"
+                   name="nav_item">
+                    <svg class="bi" height="16" width="16">
+                        <i class="bi me-2 bi-fan"></i>
+                    </svg>
+                    <span>相位设计</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="ps-0 ms-0 nav-link link-dark active" data-bs-target="#serial_pane" data-bs-toggle="pill"
+                   href="#"
+                   name="nav_item">
+                    <svg class="bi" height="16" width="16">
+                        <i class="bi me-2 bi-link-45deg"></i>
+                    </svg>
+                    <span>串口通讯</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="ps-0 ms-0 nav-link link-dark" data-bs-target="#ccc_pane" data-bs-toggle="pill" href="#"
+                   name="nav_item">
+                    <svg class="bi" height="16" width="16">
+                        <i class="bi me-2 bi-cpu"></i>
+                    </svg>
+                    <span>控制模块</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="ps-0 ms-0 nav-link link-dark" data-bs-target="#can_pane" data-bs-toggle="pill" href="#"
+                   name="nav_item">
+                    <svg class="bi" height="16" width="16">
+                        <i class="bi me-2 bi-speedometer"></i>
+                    </svg>
+                    <span>总线通讯</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="ps-0 ms-0 nav-link link-dark" data-bs-target="#blue_pane" data-bs-toggle="pill" href="#"
+                   name="nav_item">
+                    <svg class="bi" height="16" width="16">
+                        <i class="bi me-2 bi-rocket-takeoff-fill"></i>
+                    </svg>
+                    <span>ESPOTA</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="ps-0 ms-0 nav-link link-dark" data-bs-target="#help_pane" data-bs-toggle="pill" href="#"
+                   name="nav_item">
+                    <svg class="bi" height="16" width="16">
+                        <i class="bi me-2 bi-palette-fill"></i>
+                    </svg>
+                    <span>关于帮助</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+    <!--侧边栏 END-->
+
+    <div class="tab-content flex-grow-1" style="width: 100px">
+        <div class="tab-pane fade" id="phase_pane" role="tabpanel" style="overscroll-behavior: contain">
+            <!--波形绘制  START-->
+            <div class="mb-3">
+                <div class="pre-scrollable" style="height: 400px; overflow-x: scroll; overscroll-behavior: contain">
+                    <div id="signal_chart" style="width: 8200px; height: 100%"></div>
+                </div>
+            </div>
+            <!--波形绘制 END-->
+
+            <!--编码设计  START-->
+            <div class="">
+                <div class="row mb-2">
+                    <div class="col">
+                        <button class="w-100 mx-auto btn btn-block btn-sm  btn-outline-success    mb-2"
+                                id="write_cas_info"
+                                type="button"><i class="bi bi-yelp btn-outline-success  me-3"></i>写入凸轮信号
+                        </button>
+                    </div>
+                    <div class="col">
+                        <button class="w-100 mx-auto btn btn-block btn-sm  btn-outline-success    mb-2"
+                                id="write_crs_info"
+                                type="button"><i class="bi bi-wind btn-outline-success  me-3"></i>写入曲轴信号
+                        </button>
+                    </div>
+                    <div class="col">
+                        <input class="form-control  btn-outline-success   form-control-sm" id="f_upload" type="file"/>
+                    </div>
+                    <div class="col">
+                        <button class="w-100 mx-auto btn btn-block btn-sm  btn-outline-success  mb-2"
+                                id="save_config"
+                                type="button"><i class="bi bi-save me-3"></i>保存配置到本地
+                        </button>
+                    </div>
+                    <div class="col">
+                        <button class="w-100 mx-auto btn btn-block  btn-sm  btn-outline-success   mb-2 "
+                                id="restart_device"
+                                type="button"><i class="bi bi-snow2 btn-outline-success  me-3"></i>重启设备
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!--编码设计  END-->
+        </div>
+
+        <div class="tab-pane fade show active" id="serial_pane" role="tabpanel" style="overscroll-behavior: contain">
+            <!--串口设置 START-->
+            <div class="row" id="panel0">
+                <div class="col-sm-3" id="panel1">
+                    <div class="input-group input-group-sm mb-2">
+                        <label class="input-group-text">波特率</label>
+                        <select class="form-select" id="serial_baud">
+                            <option value="115200">115200</option>
+                            <option value="110">110</option>
+                            <option value="300">300</option>
+                            <option value="600">600</option>
+                            <option value="1200">1200</option>
+                            <option value="2400">2400</option>
+                            <option value="4800">4800</option>
+                            <option value="7200">7200</option>
+                            <option value="9600">9600</option>
+                            <option value="14400">14400</option>
+                            <option value="19200">19200</option>
+                            <option value="28800">28800</option>
+                            <option value="38400">38400</option>
+                            <option value="56000">56000</option>
+                            <option value="57600">57600</option>
+                            <option value="76800">76800</option>
+                            <option value="230400">230400</option>
+                            <option value="460800">460800</option>
+                        </select>
+                    </div>
+                    <div class="input-group input-group-sm mb-2">
+                        <span class="input-group-text">数据位</span>
+                        <select class="form-select" id="serial_data_bit">
+                            <option value="8">8</option>
+                            <option value="7">7</option>
+                        </select>
+                    </div>
+                    <div class="input-group input-group-sm input-group-sm mb-2">
+                        <span class="input-group-text">停止位</span>
+                        <select aria-label="One" class="form-select" id="serial_stop_bit">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                        </select>
+                    </div>
+                    <div class="input-group input-group-sm mb-2">
+                        <span class="input-group-text">校验位</span>
+                        <select class="form-select" id="serial_checksum_bit">
+                            <option value="none">none</option>
+                            <option value="even">even</option>
+                            <option value="odd">odd</option>
+                        </select>
+                    </div>
+                    <div class="input-group input-group-sm mb-2">
+                        <span class="input-group-text">缓冲区</span>
+                        <select class="form-select" id="serial_buffer">
+                            <option value="512">512</option>
+                            <option value="1024">1024</option>
+                            <option value="2048">2048</option>
+                            <option value="4096">4096</option>
+                        </select>
+                    </div>
+                    <div class="input-group input-group-sm mb-2">
+                        <span class="input-group-text">流控制</span>
+                        <select class="form-select" id="serial_flow_control">
+                            <option value="none">none</option>
+                            <option value="hardWare">hardWare</option>
+                        </select>
+                    </div>
+                    <div class="btn-group btn-group-sm d-flex m-auto mb-2" role="group">
+                        <button class="btn btn-outline-warning" id="btn_serial_search" type="button">搜索串口</button>
+                        <button class="btn btn-outline-success mx-auto" id="btn_serial_connect" type="button">连接串口
+                        </button>
+                    </div>
+                    <div class="mb-3" style="max-width: 540px">
+                        <div class="row border-bottom border-1 g-0 justify-content-center">
+                            <div class="col-md-1 align-self-center justify-content-center d-flex">
+                                <i class="bi bi-heartbreak text-danger" id="serial_disconnect_icon"
+                                   style="font-size: 20px"></i>
+                                <i class="bi bi-heart-pulse text-success" hidden id="serial_connect_icon"
+                                   style="font-size: 20px"></i>
+                            </div>
+                        </div>
+                        <div class="row g-0">
+                            <div class="ps-1 card-text fw-light text-info" id="serial_connect_status_text"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm justify-content-center align-content-center" id="panel2">
+                    <div class="row mb-2">
+                        <div class="col mx-0 px-0 col-md-2 align-items-center align-self-center">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" id="hex_show_switch" type="checkbox"/>
+                                <label class="form-check-label text-secondary" for="hex_show_switch">文本</label>
+                            </div>
+                        </div>
+                        <div class="col px-0 mx-0 col-md-2 align-items-center align-self-center">
+                            <div class="form-check form-switch align-items-center align-self-center">
+                                <input class="form-check-input" id="auto_loop_switch" type="checkbox"/>
+                                <label class="form-check-label text-secondary" for="auto_loop_switch">滚动</label>
+                            </div>
+                        </div>
+                        <div class="col px-0 mx-0 col-md-2 align-items-center align-self-center">
+                            <div class="form-check form-switch align-items-center align-self-center">
+                                <input class="form-check-input" id="enable_add_newline" type="checkbox"/>
+                                <label class="form-check-label text-secondary" for="enable_add_newline">自动换行</label>
+                            </div>
+                        </div>
+                        <div class="rol col-md-4 align-items-center align-self-center">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">超时时间ms</span>
+                                <input class="form-control" id="receive_timeout" type="number"/>
+                            </div>
+                        </div>
+                        <div class="col px-0 mx-0 align-items-center justify-content-end d-flex align-self-center">
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-sm px-3 btn-outline-secondary" id="textarea_copy" type="button">
+                                    复制
+                                </button>
+                                <button class="btn btn-sm px-3 btn-outline-secondary" id="textarea_clear" type="button">
+                                    清空
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <textarea class="form-control form-control-sm w-100 bg-transparent text-dark shadow-sm mb-2"
+                                  id="logger_area" rows="15"></textarea>
+                    </div>
+                    <div class="row text-secondary">
+                        <div class="col">
+                            <div class="form-check">
+                                <input class="form-check-input" id="checkbox_add_newline" type="checkbox" value=""/>
+                                <label class="form-check-label" for="checkbox_add_newline">末尾回车换行</label>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-check">
+                                <input class="form-check-input" id="checkbox_hex_send" type="checkbox" value=""/>
+                                <label class="form-check-label" for="checkbox_hex_send">文本发送</label>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-check">
+                                <input class="form-check-input" id="checkbox_timer_send" type="checkbox" value=""/>
+                                <label class="form-check-label" for="checkbox_timer_send">定时发送</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <textarea
+                                class="form-control form-control-sm w-100 fs-6 bg-transparent text-dark shadow-sm mb-2"
+                                id="send_area"
+                                placeholder="请输入要发送的内容。" rows="3"></textarea>
+                    </div>
+                    <div class="row px-0 mx-0 mb-2 justify-content-between align-content-center text-secondary align-items-center">
+                        <div class="rol col-md-4">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">数字自动递增</span>
+                                <input class="form-control" id="auto_increase_step" type="number" value="0"/>
+                            </div>
+                        </div>
+                        <div class="rol col-md-5">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">发送时间周期</span>
+                                <input class="form-control" id="send_periodic" type="number" value="1000"/>
+                                <span class="input-group-text">ms</span>
+                            </div>
+                        </div>
+                        <div class="rol d-grid col-md-3">
+                            <button class="btn btn-sm btn-outline-success btn-block shadow-sm" id="serial_send"
+                                    type="button"><i class="bi bi-send me-2"></i>发送
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="ccc_pane" role="tabpanel" style="overscroll-behavior: contain">
+            <div class="row text-secondary">
+                <div class="col col-md-5">
+                    <div class="row">
+                        <textarea class="form-control form-control-sm w-100 bg-transparent text-dark shadow-sm mb-2"
+                                  id="ccc_logger_area" rows="25"></textarea>
+                    </div>
+                </div>
+                <div class="col col-md-7">
+                    <div class="row mb-2 " id="set_speed_config">
+                        <div class="col col-md-4">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">最大值</span>
+                                <input class="form-control" id="speed_max"
+                                       onchange="document.getElementById('speedSlider').max =value " type="number"
+                                       value="8000"/>
+                            </div>
+                        </div>
+                        <div class="col col-md-4">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">最小值</span>
+                                <input class="form-control" id="speed_min"
+                                       onchange="document.getElementById('speedSlider').min =value " type="number"
+                                       value="0"/>
+                            </div>
+                        </div>
+                        <div class="col col-md-4">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">变化率r/s</span>
+                                <input class="form-control" id="speed_step" type="number"
+                                       value="100"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-group mb-3">
+                        <span class="input-group-text fs-6">转速</span>
+                        <input class="form-control" id="speed_target" type="number" value="0"/>
+                        <span class="input-group-text text-secondary disabled">rpm</span>
+                        <button class="btn shadow-sm" data-bs-target="#set_speed_config" data-bs-toggle="collapse"
+                                type="button">
+                            <i class="bi bi-gear"></i>
+                        </button>
+                    </div>
+                    <div class="row mx-1 mb-3">
+                        <input id="speedSlider" max="document.getElementById('speed_max').value"
+                               min="document.getElementById('speed_min').value"
+                               onchange="document.getElementById('speed_target').value=value" step="1" type="range"
+                               value="0"/>
+                    </div>
+
+                    <div class="row justify-content-between mb-2">
+                        <div class="col col-md-7">
+                            <div class="row">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">自动发送周期</span>
+                                    <input class="form-control" id="auto_send_periodic" type="number" value="1000"/>
+                                    <span class="input-group-text">毫秒</span>
+                                    <div class="input-group-text">
+                                        <input class="form-check-input" id="auto_send_enable" type="checkbox"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col col-md-3 ">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">随机数</span>
+                                <div class="input-group-text">
+                                    <input class="form-check-input" id="random_enable" type="checkbox"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col col-md-2">
+                            <button class="btn btn-sm btn-outline-success btn-block" id="send_target_speed"
+                                    type="button"><i class="bi bi-gender-trans me-2"></i>发送
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row justify-content-between mb-2">
+                        <div class="col col-md-10">
+                            <div class="row">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">电压输出 (通道0)</span>
+                                    <input class="form-control" id="dac0_val" type="number" value="1000"/>
+                                    <span class="input-group-text">mV</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col col-md-2">
+                            <button class="btn btn-sm btn-outline-success btn-block" id="btn_dac0"
+                                    type="button"><i class="bi bi-lightning-charge me-2"></i>发送
+                            </button>
+                        </div>
+                    </div>
+                    <div class="row justify-content-between mb-2">
+                        <div class="col col-md-10">
+                            <div class="row">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">电压输出 (通道1)</span>
+                                    <input class="form-control" id="dac1_val" type="number" value="1000"/>
+                                    <span class="input-group-text">mV</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col col-md-2">
+                            <button class="btn btn-sm btn-outline-success btn-block" id="btn_dac1"
+                                    type="button"><i class="bi bi-broadcast me-2"></i>发送
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row px-1 shadow-sm">
+                        <div id="speed_tender_charts" style="height: 350px; width: 100%"></div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="can_pane" role="tabpanel" style="overscroll-behavior: contain">CAN总线</div>
+
+        <div class="tab-pane fade" id="blue_pane" role="tabpanel" style="overscroll-behavior: contain">ESP32 OTA</div>
+
+        <div class="tab-pane fade" id="help_pane" role="tabpanel" style="overscroll-behavior: contain">
+            <div class='' id='write'><h3 id='基于esp32芯片的正时信号发生器使用方法'><span>基于ESP32芯片的正时信号发生器使用方法</span></h3><h5
+                    id='接线指导'><span>接线指导</span></h5>
+                <blockquote><p><span>芯片的6号脚接入ECU曲轴信号输入针脚。</span></p>
+                    <p><span>芯片的7号脚接入ECU凸轮信号输入针脚</span></p>
+                    <p><span>芯片的任意一个GND引脚接入ECU凸轮信号输入地针脚。</span></p></blockquote>
+                <h5 id='使用注意事项'><span>使用注意事项</span></h5>
+                <ol>
+                    <li><span> 正时信号发生器的上位机为网页版，需要联网使用，否则网页排版会异常。</span></li>
+                    <li><span> 芯片原始固件初始默认是4+1凸轮信号，60-2曲轴信号。</span></li>
+                    <li><span> 必须使用支持网页串口的浏览器才能正常使用该功能（Edge、Google等）、如果浏览器不支持web serial，搜索串口时会弹窗提示。</span></li>
+                    <li><span> 需要准备type-c接口的USB线，接入芯片的Com口（芯片usb有标注type-c口是usb还是com。）</span></li>
+                    <li><span>通过设备管理器确认芯片的com口通道。（com3、com4）</span></li>
+                </ol>
+                <h4 id='相位设计'><span>相位设计</span></h4>
+                <ol>
+                    <li><span> 如果需要改变正时波形，可以自由编辑波形，然后点击&lt;写入正时信号&gt;按钮，芯片会接收后会重启芯片。</span></li>
+                    <li><span>可以保存或者读取json配置来快速写入正时信号。提供4+1齿、3齿正时波形配置文件。</span></li>
+                </ol>
+                <h4 id='发动机转速设置'><span>发动机转速设置</span></h4>
+                <ol>
+                    <li><span>在串口通讯中，点击&lt;搜索串口&gt;按钮，选择芯片的com口，然后点击&lt;连接串口&gt;按钮。</span></li>
+                    <li><span>建议开启&lt;文本&gt;&lt;滚动&gt;开关。</span></li>
+                    <li><span>在转速框内输入需求转速，点击&lt;发送&gt;按钮。</span></li>
+                    <li><span>可以配合随机转速和自动发送功能，实时改变转速。</span></li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.bootcdn.net/ajax/libs/bootstrap-slider/11.0.2/bootstrap-slider.js"></script>
+<script src="https://cdn.staticfile.org/echarts/5.4.3/echarts.min.js"></script>
+<script src="https://www.w3school.com.cn/lib/bs/bootstrap.js"></script>
+
+<script src="./comment.js"></script>
 </body>
 </html>

@@ -532,14 +532,14 @@ class Signal {
                 dataHex += d.toString(16).toLocaleUpperCase().padStart(2, "0");
             }
             newmsg += dataHex;
-            newmsg = newmsg.split('\r\n')[0];
+            //newmsg = newmsg.split('\r\n')[0];
             if (getByID("enable_add_newline").checked) {
                 newmsg += "\r\n";
             }
         } else {
             let dataAscii = asciidecoder.decode(Uint8Array.from(data));
             newmsg += dataAscii;
-            newmsg = newmsg.split('\r\n')[0];
+            //newmsg = newmsg.split('\r\n')[0];
             if (getByID("enable_add_newline").checked) {
                 newmsg += "\r\n";
             }

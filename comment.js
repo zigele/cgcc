@@ -1,268 +1,3 @@
-class SerialP {
-    constructor() {
-        this.serialPort = null;
-        this.writer = null;
-        this.reader = -null;
-        this.serialReceiveData = [];
-        this.serialOpen = false;
-        this.serialClose = true;
-        this.receiveDataCallBackFuntion = null;
-        this.serialConnectCallBackFun = null;
-        this.serialDisConnectCallBackFun = null;
-        this.receiveTimeOut = 500;
-        this.serialTimer = null;
-    }
-
-    serialIsSupport() {
-        if ("serial" in navigator) {
-            return {ok: true, state: "succeed"};
-        } else {
-            return {ok: false, state: "你的浏览器不支持Web Serial Api。"};
-        }
-    }
-
-    init(serialConnectCallBackFun, serialDisConnectCallBackFun, receiveDataCallBackFuntion) {
-        try {
-            navigator.serial.addEventListener("connect", (e) => {
-                this.serialConnectEvent();
-            });
-            navigator.serial.addEventListener("disconnect", (e) => {
-                this.serialDisConnetEvent();
-            });
-            this.receiveDataCallBackFuntion = receiveDataCallBackFuntion;
-            this.serialDisConnectCallBackFun = serialDisConnectCallBackFun;
-            this.serialConnectCallBackFun = serialConnectCallBackFun;
-            return {
-                ok: true,
-                state: "succeed!",
-            };
-        } catch (error) {
-            return {
-                ok: true,
-                state: error,
-            };
-        }
-    }
-
-    serialConnectEvent() {
-        console.log("connect");
-        this.serialConnectCallBackFun();
-    }
-
-    serialDisConnetEvent() {
-        console.log("disconnect");
-        this.serialDisConnectCallBackFun();
-    }
-
-    async serialSearch() {
-        try {
-            let port = await navigator.serial.requestPort();
-            this.serialPort?.close();
-            await this.serialPort?.forget();
-            this.serialPort = port;
-            return {
-                ok: true,
-                state: "succeed!",
-            };
-        } catch (error) {
-            return {
-                ok: true,
-                state: error,
-            };
-        }
-    }
-
-    async openSerial(obj) {
-        let res = {
-            ok: true,
-            state: "succeed",
-        };
-        try {
-            await this.serialPort.open(obj);
-            this.serialOpen = true;
-            this.serialClose = false;
-            this.readData(res);
-            return res;
-        } catch (error) {
-            return {
-                ok: false,
-                state: error,
-            };
-        }
-    }
-
-    /**
-     * 在某些情况下可能会发生一些非致命的串行端口读错误，如缓冲区溢出、帧错误或奇偶校验错误。
-     * 这些是作为异常抛出的，可以通过在检查port.readable的前一个循环之上添加另一个循环来捕获。
-     * 这是可行的，因为只要错误是非致命的，一个新的ReadableStream就会自动创建。
-     * 如果发生致命错误，如串行设备被删除，则端口。可读的变成了零。
-     */
-    async readData(res) {
-        while (this.serialOpen && this.serialPort.readable) {
-            this.reader = this.serialPort.readable.getReader();
-            try {
-                while (true) {
-                    const {value, done} = await this.reader.read();
-                    if (done) {
-                        break;
-                    }
-                    this.dataReceived(value);
-                }
-            } catch (error) {
-                res.state = error;
-                res.ok = false;
-            } finally {
-                this.reader.releaseLock();
-            }
-        }
-        await this.serialPort.close();
-    }
-
-    /**
-     * 只要串行端口是开放的，它就能继续产生数据，
-     * 而 read() 所返回的每个数据块中的数据量基本上是任意的，
-     * 取决于调用它的时间。
-     * 设备和与之通信的代码可以自行决定什么是完整的信息。
-     * 例如，设备可能使用 ASCII 格式的文本与主机通信，
-     * 每条信息都以换行（或序列"\r\n"）结束。
-     */
-    dataReceived(data) {
-        this.serialReceiveData.push(...data);
-        if (this.receiveTimeOut == 0) {
-            this.receiveDataCallBackFuntion(this.serialReceiveData, true);
-            this.serialReceiveData = [];
-            return;
-        }
-        //清除之前的时钟
-        clearTimeout(this.serialTimer);
-        let that = this;
-        this.serialTimer = setTimeout(() => {
-            //时间到后 发送接收到的数据。感觉这个web serial api用法很奇怪。
-            that.receiveDataCallBackFuntion(that.serialReceiveData, true);
-            that.serialReceiveData = [];
-        }, this.receiveTimeOut);
-    }
-
-    async closeSerial() {
-        try {
-            if (this.serialOpen) {
-                this.reader?.cancel();
-                this.serialClose = true;
-                this.serialOpen = false;
-                return {
-                    ok: true,
-                    state: "succeed。",
-                };
-            } else {
-                return {
-                    ok: false,
-                    state: "设备没有打开！",
-                };
-            }
-        } catch (error) {
-            return {
-                ok: false,
-                state: error,
-            };
-        }
-    }
-
-    async sendHex(hex, addCRLF) {
-        try {
-            let ff = "";
-            if (!(hex.length % 2 == 0)) {
-                ff = "0" + hex;
-            } else {
-                ff = hex;
-            }
-            const value = ff.replace(/\s+/g, "");
-            if (!hex) {
-                return {
-                    ok: false,
-                    state: "发送内容为空",
-                };
-            }
-            if (/^[0-9A-Fa-f]+$/.test(value) && value.length % 2 === 0) {
-                let data = [];
-                for (let i = 0; i < value.length; i = i + 2) {
-                    data.push(parseInt(value.substring(i, i + 2), 16));
-                }
-                await this.writeData(Uint8Array.from(data), addCRLF);
-                return {
-                    ok: true,
-                    state: "succeed。",
-                };
-            } else {
-                return {
-                    ok: false,
-                    state: "HEX格式错误:" + hex,
-                };
-            }
-        } catch (error) {
-            return {
-                ok: false,
-                state: error,
-            };
-        }
-    }
-
-    async sendText(text, addCRLF) {
-        try {
-            let encoder = new TextEncoder();
-            this.writeData(encoder.encode(text), addCRLF);
-            return {
-                ok: true,
-                state: "succeed!",
-            };
-        } catch (error) {
-            return {
-                ok: false,
-                state: error,
-            };
-        }
-    }
-
-    async writeData(data, addCRLF) {
-        try {
-            this.writer = this.serialPort.writable.getWriter();
-            if (addCRLF) {
-                data = new Uint8Array([...data, 0x0d, 0x0a]);
-            }
-            await this.writer.write(data);
-            this.writer.releaseLock();
-            return {
-                ok: true,
-                state: "succeed!",
-            };
-        } catch (error) {
-            return {
-                ok: false,
-                state: error,
-            };
-        }
-    }
-
-    async sendRowArrayData(data, addCRLF) {
-        try {
-            this.writer = this.serialPort.writable.getWriter();
-            if (addCRLF) {
-                data = new Uint8Array([...data, 0x0d, 0x0a]);
-            }
-            await this.writer.write(data);
-            this.writer.releaseLock();
-            return {
-                ok: true,
-                state: "succeed!",
-            };
-        } catch (error) {
-            return {
-                ok: false,
-                state: error,
-            };
-        }
-    }
-}
-
 class Signal {
     constructor() {
         this.crsAngleBitIndex = [];
@@ -295,6 +30,8 @@ class Signal {
         }
         let that = this;
         this.option = {
+            color: ['#ffc107', '#0dcaf0', '#d63384', "#fd7e14",
+                '#6f42c1', '#0d6efd', '#dc3545'],
             useCoarsePointer: true,
             title: {
                 text: "相位设定图",
@@ -334,8 +71,12 @@ class Signal {
                 name: "曲轴转角",
                 axisLabel: {
                     formatter: "{value}°",
+                    textStyle: {
+                        fontSize: '10'
+                    },
+                    rotate: '45'
                 },
-                interval: 1,
+                interval: 0,
                 axisTick: {
                     alignWithLabel: true,
                 },
@@ -350,7 +91,13 @@ class Signal {
                             return "高电平";
                         }
                     },
+                    textStyle: {
+                        fontSize: '13'
+                    }
                 },
+                splitLine: {
+                    show: false
+                }
             },
             series: [
                 {
@@ -372,15 +119,11 @@ class Signal {
             ],
         };
     }
-
 }
+
 
 (function app() {
     //alert("该程序采用bootstrap v5 cdn库，需要联网！");
-
-    /**
-     * 串口通讯程序 Start
-     */
     const linkColor = document.getElementsByName("nav_item");
 
     function colorLink() {
@@ -396,481 +139,333 @@ class Signal {
         return document.getElementById(id);
     }
 
-    let ses = new SerialP();
-    if (!ses.serialIsSupport().ok) {
-        serial_show_hints(false, "你的浏览器不支持Web Serial API。");
-    } else {
-        serial_show_hints(true, "welcome!");
+    const protocol_header_1 = "#";
+    const protocol_header_2 = "#";
+    const SET_SPEED = 'A';
+    const SET_CAS_MODEL = 'B';
+    const SET_CRS_MODEL = 'C';
+    const SET_WIFI_SSID = 'D';
+    const SET_WIFI_PASSWORD = 'E';
+    const SET_DAC0_VAL = 'F';
+    const SET_DAC1_VAL = 'G';
+    const RESET_NVS = 'H';
+    const SAVE_CAS_MODEL = 'I';
+    const SAVE_CRS_MODEL = 'J';
+
+    let wsCode2NameDict = {
+        1000: "正常关闭; 无论为何目的而创建, 该链接都已成功完成任务。",
+        1001: "终端离开, 可能因为服务端错误, 也可能因为浏览器正从打开连接的页面跳转离开。",
+        1002: "由于协议错误而中断连接。",
+        1003: "由于接收到不允许的数据类型而断开连接 (如仅接收文本数据的终端接收到了二进制数据)。",
+        1005: "保留。 表示没有收到预期的状态码。",
+        1006: "保留。 用于期望收到状态码时连接非正常关闭 (也就是说, 没有发送关闭帧)。",
+        1007: "由于收到了格式不符的数据而断开连接 (如文本消息中包含了非 UTF-8 数据)。",
+        1008: "由于收到不符合约定的数据而断开连接。 这是一个通用状态码, 用于不适合使用 1003 和 1009 状态码的场景。",
+        1009: "由于收到过大的数据帧而断开连接。",
+        1010: "客户端期望服务器商定一个或多个拓展, 但服务器没有处理, 因此客户端断开连接。",
+        1011: "客户端由于遇到没有预料的情况阻止其完成请求, 因此服务端断开连接。",
+        1012: "服务器由于重启而断开连接。",
+        1013: "服务器由于临时原因断开连接, 如服务器过载因此断开一部分客户端连接。",
+        1015: "保留。 表示连接由于无法完成 TLS 握手而关闭 (例如无法验证服务器证书)。",
     }
 
-    getByID("receive_timeout").value = ses.receiveTimeOut;
+    let ws = null;
+    let dot = '.';
+    let repeat_counter = 0, ws_connected = false, tip_text = '', ws_connecting = false;
+    const date = new Date();
+    let status_timer;
+    let signals = new Signal()
+    signals.init()
 
-    function bindCallBackFun(id, fun) {
-        document.getElementById(id).addEventListener("click", (e) => {
-            fun(e, this);
-        });
-    }
-
-    function bindChangeCallBackFun(id, fun) {
-        document.getElementById(id).addEventListener("change", (e) => {
-            fun(e, this);
-        });
-    }
-
-    bindCallBackFun("btn_serial_search", searchSerial);
-
-    async function searchSerial(e, that) {
-        serial_show_hints(true, "搜索串口...");
-        ses = new SerialP();
-        let ret = ses.init(serialConnectEvent, serialDisConnectEvent, receiveDataEvent);
-        if (!ret.ok) {
-            serial_show_hints(false, "串口初始化:" + ret.state);
-            return;
-        }
-        ret = await ses.serialSearch();
-        if (!ret.ok) {
-            serial_show_hints(false, "搜索串口:" + ret.state);
-
-        } else {
-            serial_show_hints(true, "搜索串口:" + ret.state);
-        }
-    }
-
-    function serialConnectEvent(params) {
-        disableSerialConfigEditable(true);
-        alert("连接成功！");
-    }
-
-    function serialDisConnectEvent(params) {
-        disableSerialConfigEditable(false);
-        alert("断开连接！");
-    }
-
-    bindCallBackFun("btn_serial_connect", connectSerial);
-
-    async function connectSerial(e, that) {
-        if (!ses.serialPort) {
-            serial_show_hints(false, "未选择串口！");
-            return;
-        }
-        let ret;
-        if (ses.serialPort.readable && ses.serialPort.writable) {
-            serial_show_hints(true, "正在关闭串口...");
-            ret = await ses.closeSerial();
-            serial_show_hints(false, "关闭串口：" + ret.state);
-            getByID("btn_serial_connect").textContent = "连接串口";
-            disableSerialConfigEditable(false);
-            getByID("btn_serial_search").disabled = false;
-        } else {
-            serial_show_hints(false, "连接中...");
-            getByID("btn_serial_search").disabled = true;
-            ret = await ses.openSerial({
-                baudRate: getByID("serial_baud").value,
-                dataBits: getByID("serial_data_bit").value,
-                stopBits: getByID("serial_stop_bit").value,
-                parity: getByID("serial_checksum_bit").value,
-                flowControl: getByID("serial_flow_control").value,
-                bufferSize: getByID("serial_buffer").value,
-            });
-            if (!ret.ok) {
-                getByID("btn_serial_search").disabled = false;
-                disableSerialConfigEditable(false);
-                getByID("btn_serial_connect").textContent = "连接串口";
-                serial_show_hints(false, "连接:" + ret.state);
-
-            } else {
-                getByID("btn_serial_search").disabled = true;
-                getByID("btn_serial_connect").textContent = "关闭串口";
-                disableSerialConfigEditable(true);
-                serial_show_hints(true, "连接：" + ret.state);
-            }
-        }
-    }
-
-    function serial_show_hints(is_connect, tip_text) {
-        if (is_connect) {
-            document.getElementById("serial_disconnect_icon").hidden = true;
-            document.getElementById("serial_connect_icon").hidden = false;
-            document.getElementById("serial_connect_status_text").innerHTML = tip_text;
-        } else {
-            document.getElementById("serial_disconnect_icon").hidden = false;
-            document.getElementById("serial_connect_icon").hidden = true;
-            document.getElementById("serial_connect_status_text").innerHTML = tip_text;
-        }
-    }
-
-    function disableSerialConfigEditable(isDisable) {
-        if (isDisable) {
-            getByID("serial_baud").disabled = true;
-            getByID("serial_data_bit").disabled = true;
-            getByID("serial_stop_bit").disabled = true;
-            getByID("serial_checksum_bit").disabled = true;
-            getByID("serial_flow_control").disabled = true;
-            getByID("serial_buffer").disabled = true;
-        } else {
-            getByID("serial_baud").disabled = false;
-            getByID("serial_data_bit").disabled = false;
-            getByID("serial_stop_bit").disabled = false;
-            getByID("serial_checksum_bit").disabled = false;
-            getByID("serial_flow_control").disabled = false;
-            getByID("serial_buffer").disabled = false;
-        }
-    }
-
-    //添加日志
-    let asciidecoder = new TextDecoder();
-    let newmsg = "";
-
-    function receiveDataEvent(data, isReceive = true) {
-        if (data.length <= 0) {
-            return;
-        }
-        if (getByID("hex_show_switch").checked == false) {
-            let dataHex = "";
-            for (const d of data) {
-                //转16进制并补0
-                dataHex += d.toString(16).toLocaleUpperCase().padStart(2, "0");
-            }
-            newmsg += dataHex;
-            //newmsg = newmsg.split('\r\n')[0];
-            if (getByID("enable_add_newline").checked) {
-                newmsg += "\r\n";
-            }
-        } else {
-            let dataAscii = asciidecoder.decode(Uint8Array.from(data));
-            newmsg += dataAscii;
-            //newmsg = newmsg.split('\r\n')[0];
-            if (getByID("enable_add_newline").checked) {
-                newmsg += "\r\n";
-            }
-        }
-        //let time = toolOptions.showTime ? formatDate(new Date()) + '&nbsp;' : ''
-        getByID("logger_area").value = newmsg;
-        if (getByID("auto_loop_switch").checked) {
-            getByID("logger_area").scrollTop = getByID("logger_area").scrollHeight;
-        }
-        getByID("ccc_logger_area").value = newmsg;
-        if (getByID("auto_loop_switch").checked) {
-            getByID("ccc_logger_area").scrollTop = getByID("ccc_logger_area").scrollHeight;
-        }
-    }
-
-    bindChangeCallBackFun("receive_timeout", receiveTimeoutEvent);
-
-    function receiveTimeoutEvent(event, that) {
-        ses.receiveTimeOut = parseInt( getByID("receive_timeout").value);
-    }
-
-    bindCallBackFun("textarea_copy", copyReceiveTextEvent);
-
-    function copyReceiveTextEvent(event, that) {
-        let textarea = getByID("logger_area").value;
-        navigator.clipboard
-            .writeText(textarea)
-            .then(() => {
-                alert("复制成功！");
-            })
-            .catch((err) => {
-                alert("复制失败！");
-            });
-    }
-
-    bindCallBackFun("textarea_clear", clearReceiveTextEvent);
-
-    function clearReceiveTextEvent(event, that) {
-        getByID("logger_area").value = "";
-        ses.serialReceiveData = [];
-        newmsg = "";
-    }
-
-    bindCallBackFun("serial_send", sendData);
-
-    function sendData(event, that) {
-        let text = getByID("send_area").value;
-        _send(text);
-    }
-
-    function _send(text) {
-        if (text.length <= 0) {
-            alert("text 长度小于0");
-            return;
-        }
-        if (getByID("checkbox_hex_send").checked == false) {
-            if (getByID("auto_increase_step").value > 0) {
-                //text += getByID("auto_increase_step").value;
-                alert("不支持!")
-            }
-            if (getByID("checkbox_add_newline").checked) {
-                ses.sendHex(text, true);
-            } else {
-                ses.sendHex(text, false);
-            }
-        } else {
-            if (getByID("checkbox_add_newline").checked) {
-                ses.sendText(text, true);
-            } else {
-                ses.sendText(text, false);
-            }
-        }
-    }
-
-    let serialloopSendTimer = null;
-    bindChangeCallBackFun("checkbox_timer_send", sendDataAuto);
-
-    function sendDataAuto(event, that) {
-        clearInterval(serialloopSendTimer);
-        if (getByID("checkbox_timer_send").checked) {
-            serialloopSendTimer = setInterval(() => {
-                let text = getByID("send_area").value;
-                _send(text);
-            }, parseInt(getByID("send_periodic").value));
-        }
-    }
-
-    let targetSpeedBuffer = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    let option2 = {
-        xAxis: {
-            data: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
-        },
-        grid: {
-            left: 10,
-            containLabel: true,
-        },
-        yAxis: {
-            // offset:-20,
-        },
-        series: [
-            {
-                data: targetSpeedBuffer,
-                type: "line",
-                smooth: true,
-            },
-        ],
-    };
-
-    bindCallBackFun("send_target_speed", sendTagetSpeed);
-	speedChart = echarts.init(document.getElementById("speed_tender_charts"));
-	speedChart.setOption(option2, true);
-    async function sendTagetSpeed(event, that) {
-        let v = parseInt(getByID("speed_target").value, 10);
-        targetSpeedBuffer.push(v);
-        v = "4041" + v.toString(16).padStart(4, "0");
-        let ret = await ses.sendHex(v, false);
-        if (ret.ok) {
-            option2.series[0].data = targetSpeedBuffer.slice(-20);
-            speedChart.setOption(option2, true);
-            speedChart.resize();
-        }
-    }
-
-    document.getElementById('speedSlider').max = parseInt( document.getElementById('speed_max').value);
-    document.getElementById('speedSlider').min = parseInt( document.getElementById('speed_min').value);
-    bindChangeCallBackFun("speed_target", set_speed_target);
-
-    function set_speed_target() {
-        let max=parseInt( document.getElementById('speed_max').value);
-        let min =parseInt( document.getElementById('speed_min').value);
-        let value = parseInt(document.getElementById('speed_target').value);
-        if (value > max) {
-            value = max;
-        }
-        if (value < min) {
-            value = min;
-        }
-        document.getElementById('speedSlider').value = value;
-        document.getElementById('speed_target').value = value;
-    }
-
-    let randomEnableSendTimer = null;
-    bindChangeCallBackFun("auto_send_enable", autoSendEnableChange);
-
-    function autoSendEnableChange(event, that) {
-        clearInterval(randomEnableSendTimer);
-        if (getByID("auto_send_enable").checked) {
-            randomEnableSendTimer = setInterval(async () => {
-                let max =parseInt( document.getElementById('speed_max').value);
-                let min =parseInt( document.getElementById('speed_min').value);
-                let ts = parseInt(parseInt(getByID("speed_target").value));
-                if (getByID("random_enable").checked) {
-                    ts = Math.round(Math.random() * (max - min) + min);
-                    ts = (ts > max )? max : ts;
-                    ts =( ts <= min )? min : ts;
-                }
-                targetSpeedBuffer.push(ts);
-                ts = "4041" + ts.toString(16).padStart(4, "0");
-                let ret = await ses.sendHex(ts, false);
-                if (ret.ok) {
-                    option2.series[0].data = targetSpeedBuffer.slice(-20);
-                    speedChart.setOption(option2, true);
-                    speedChart.resize();
-                }
-            }, parseInt(getByID("auto_send_periodic").value));
-        }
-    }
-
-    /**
-     * 正时波形显示程序 Start
-     */
-    let sig = new Signal();
-    sig.init();
-    engineChart = echarts.init(document.getElementById("signal_chart"));
-    engineChart.setOption(sig.option, true);
+    engineChart = echarts.init(document.getElementById("signal-chart"));
+    engineChart.setOption(signals.option, true);
     engineChart.on("click", function (params) {
-        let ret = sig.option.series[params.seriesIndex];
-        if (ret.name == sig.option.series[1].name) {
-            if (ret.data[params.dataIndex] == sig.CRS_HI) {
-                sig.option.series[1].data[params.dataIndex] = sig.CRS_LO;
+        let ret = signals.option.series[params.seriesIndex];
+        let arr_index = params.dataIndex;
+        if (ret.name == signals.option.series[1].name) {
+            if (ret.data[params.dataIndex] == signals.CRS_HI) {
+                ret.data[params.dataIndex] = signals.CRS_LO;
             } else {
-                sig.option.series[1].data[params.dataIndex] = sig.CRS_HI;
+                ret.data[params.dataIndex] = signals.CRS_HI;
             }
-
-        } else if (ret.name == sig.option.series[0].name) {
-            if (ret.data[params.dataIndex] == sig.CAS_HI) {
-                sig.option.series[0].data[params.dataIndex] = sig.CAS_LO;
+        } else if (ret.name == signals.option.series[0].name) {
+            if (ret.data[params.dataIndex] == signals.CAS_HI) {
+                ret.data[params.dataIndex] = signals.CAS_LO;
             } else {
-                sig.option.series[0].data[params.dataIndex] = sig.CAS_HI;
+                ret.data[params.dataIndex] = signals.CAS_HI;
             }
         }
-        engineChart.setOption(sig.option, true);
+        engineChart.setOption(signals.option, true);
         engineChart.resize();
+    })
+
+    window.onload = function () {
+        getByID("ws-url").value = localStorage.getItem("EGCC_WEBSOCKET_URL")
+    }
+    getByID("btn-connect").addEventListener("click", onConnect);
+
+    function onConnect(event) {
+        if (ws_connecting || ws_connected) {
+            return;
+        }
+        try {
+            ws = new WebSocket(getByID("ws-url").value.trim())
+            ws.addEventListener("close", onWsClose, false);
+            ws.addEventListener("message", onWsMessage, false);
+            status_timer = setInterval(function () {
+                if ((ws != null) && (!ws_connected)) {
+                    repeat_counter++;
+                    if (ws.readyState == WebSocket.CONNECTING) {
+                        tip_text = date.toLocaleString('chinese', {hour12: false}) + " 正在连接." + dot.repeat(repeat_counter) + "\r\n"
+                        getByID("tip-textarea").textContent = tip_text
+                        getByID("connect-progress").style = "width:" + Math.round(repeat_counter / 22 * 100) + "%"
+                        ws_connecting = true;
+                        getByID("btn-connect").disabled = true;
+                    }
+                    if (ws.readyState == WebSocket.OPEN) {
+                        tip_text += date.toLocaleString('chinese', {hour12: false}) + " 连接成功." + "\r\n"
+                        getByID("tip-textarea").textContent = tip_text
+                        getByID("connect-progress").style = "width:100%"
+                        ws_connected = true;
+                        repeat_counter = 0;
+                        clearInterval(status_timer);
+                        ws_connecting = false;
+                        getByID("btn-connect").disabled = true;
+                        localStorage.setItem('EGCC_WEBSOCKET_URL', getByID("ws-url").value.trim())
+                    }
+                }
+            }, 1000)
+        } catch (error) {
+            console.log(error)
+
+        }
+    }
+
+    function onWsClose(e) {
+        console.log("onWsClose");
+        tip_text += date.toLocaleString('chinese', {hour12: false}) + " 已经被关闭。原因:" + wsCode2NameDict[e.code] + "\r\n";
+        getByID("tip-textarea").textContent = tip_text
+        getByID("connect-progress").style = "width:0%"
+        repeat_counter = 0;
+        clearInterval(status_timer);
+        ws_connecting = false;
+        ws_connected = false;
+        getByID("btn-connect").disabled = false;
+    }
+
+    const reader = new FileReader()  //fast will get an busy error
+    reader.addEventListener("loadend", function (e) {
+        showMesAlert(e.target.result)
     });
 
-    bindCallBackFun("write_cas_info", writeCasInfo);
-
-    function writeCasInfo(event, that) {
-        if (!ses.serialOpen) {
-            alert("串口没有打开。")
-            return
+    function onWsMessage(e) {
+        if (e.data instanceof Blob) {
+            reader.readAsText(e.data);
         }
-        try {
-            let buf = [];
-            for (let i = 0; i < 360; i++) {
-                buf[i] = sig.option.series[0].data[i] - 2;
+    }
+
+    getByID("btn-close").addEventListener("click", onClose);
+
+    function onClose(event) {
+        if (ws != null) {
+            try {
+                ws.close();
+            } catch (e) {
+                tip_text += date.toLocaleString('chinese', {hour12: false}) + e + "\r\n";
+                getByID("tip-textarea").textContent = tip_text;
             }
-            let ret = ses.sendRowArrayData([0x40, 0x42, ...buf], false);
-            console.log([0x40, 0x42, ...buf])
-            alert("写入ESP32芯片NVS成功。");
-        } catch (error) {
-            alert("写入失败" + error);
+        } else {
+            tip_text += date.toLocaleString('chinese', {hour12: false}) + " websocket未初始化。" + "\r\n";
+            getByID("tip-textarea").textContent = tip_text;
         }
     }
 
-    bindCallBackFun("btn_dac0", btn_dac0_change);
+    getByID("btn-set-ssid").addEventListener("click", setWifiSSID);
 
-    function btn_dac0_change(event, that) {
-        if (!ses.serialOpen) {
-            alert("串口没有打开。")
-            return
-        }
+    function setWifiSSID() {
         try {
-            let buf= [0x40, 0x44,0,0];
-            buf[2] = ((parseInt(document.getElementById("dac0_val").value))>>8)&0xff;
-            buf[3] = (parseInt(document.getElementById("dac0_val").value))&0xff;
-            let ret = ses.sendRowArrayData(buf, false);
-            console.log(buf)
-        } catch (error) {
-            alert("写入失败" + error);
-        }
-
-    }
-    bindCallBackFun("btn_dac1", btn_dac1_change);
-
-    function btn_dac1_change(event, that) {
-        if (!ses.serialOpen) {
-            alert("串口没有打开。")
-            return
-        }
-        try {
-            let buf= [0x40, 0x45,0,0];
-            buf[2] =( (parseInt(document.getElementById("dac1_val").value))>>8)&0xff;
-            buf[3] = (parseInt(document.getElementById("dac1_val").value))&0xff;
-            let ret = ses.sendRowArrayData(buf, false);
-            console.log(buf)
-
-        } catch (error) {
-            alert("写入失败" + error);
-        }
-    }
-
-    bindCallBackFun("restart_device", restartDevice);
-        function restartDevice(event, that) {
-        if (!ses.serialOpen) {
-            alert("串口没有打开。")
-            return
-        }
-        try {
-            let ret = ses.sendRowArrayData([0x40, 0x46], false);
-            console.log([0x40, 0x46])
-            alert("已发送，ESP32芯片即将重启。");
-        } catch (error) {
-            alert("写入失败" + error);
-        }
-
-    }
-
-    bindCallBackFun("write_crs_info", writeCrsInfo);
-
-    function writeCrsInfo(event, that) {
-        if (!ses.serialOpen) {
-            alert("串口没有打开。")
-            return
-        }
-        try {
-            let buf = [];
-            for (let i = 0; i < 360; i++) {
-                buf[i] = sig.option.series[1].data[i] - 0;
+            if (ws.readyState == WebSocket.OPEN) {
+                ws.send(protocol_header_1 + protocol_header_2 + SET_WIFI_SSID + getByID("wifi-ssid").value.trim())
+                tip_text += date.toLocaleString('chinese', {hour12: false}) + " 设置WIFI名称: " + getByID("wifi-ssid").value.trim() + "成功\r\n"
+            } else {
+                tip_text += date.toLocaleString('chinese', {hour12: false}) + " websocket未连接。" + "\r\n"
             }
-            let ret = ses.sendRowArrayData([0x40, 0x43, ...buf], true);
-            console.log([0x40, 0x42, ...buf])
-            alert("写入ESP32芯片NVS成功。");
-        } catch (error) {
-            alert("写入失败" + error);
+            getByID("tip-textarea").textContent = tip_text
+
+        } catch (e) {
+            tip_text += date.toLocaleString('chinese', {hour12: false}) + " " + e + "\r\n"
+            getByID("tip-textarea").textContent = tip_text
         }
     }
 
-    bindCallBackFun("phase_click", phaseEntryEvent);
+    getByID("btn-reset-nvs").addEventListener("click", onResetNvs);
 
-    function phaseEntryEvent(event, that) {
-        setTimeout(function () {
-            engineChart.resize();
-        }, 200);
+    function onResetNvs() {
+        try {
+            if (ws.readyState == WebSocket.OPEN) {
+                ws.send(protocol_header + RESET_NVS)
+                tip_text += date.toLocaleString('chinese', {hour12: false}) + " 芯片重置: " + "成功\r\n"
+            } else {
+                tip_text += date.toLocaleString('chinese', {hour12: false}) + " websocket未连接。" + "\r\n"
+            }
+            getByID("tip-textarea").textContent = tip_text
+        } catch (e) {
+            tip_text += date.toLocaleString('chinese', {hour12: false}) + " " + e + "\r\n"
+            getByID("tip-textarea").textContent = tip_text
+        }
+    }
+
+    getByID("btn-set-password").addEventListener("click", setWifiPASSWORD);
+
+    function setWifiPASSWORD() {
+        try {
+            if (ws.readyState == WebSocket.OPEN) {
+                ws.send(protocol_header_1 + protocol_header_2 + SET_WIFI_PASSWORD + getByID("wifi-passeord").value.trim())
+                tip_text += date.toLocaleString('chinese', {hour12: false}) + " 设置WIFI密钥: " + getByID("wifi-passeord").value.trim() + "成功\r\n"
+            } else {
+                tip_text += date.toLocaleString('chinese', {hour12: false}) + " websocket未连接。" + "\r\n"
+            }
+            getByID("tip-textarea").textContent = tip_text
+        } catch (e) {
+            tip_text += date.toLocaleString('chinese', {hour12: false}) + " " + e + "\r\n"
+            getByID("tip-textarea").textContent = tip_text
+        }
     }
 
 
-    window.addEventListener("resize", function () {
-        // 改变图表尺寸，在容器大小发生改变时需要手动调用
-        speedChart.resize();
-    });
+    getByID("btn-set-dac0").addEventListener("click", onSetDac0);
+    getByID("btn-set-dac1").addEventListener("click", onSetDac1);
 
-    bindChangeCallBackFun("f_upload", fileUpload);
-
-    function fileUpload(event, that) {
-        let reader = new FileReader();
-        let fileList = document.getElementById("f_upload").files;
-        reader.readAsText(fileList[0], "UTF-8");
-        reader.onload = function (e) {
-            let ss = JSON.parse(e.target.result);
-            sig.option.series[0].data = ss[0];
-            sig.option.series[1].data = ss[1];
-            engineChart.setOption(sig.option, true);
-            engineChart.resize();
-        };
+    function onSetDac0() {
+        if (ws.readyState == WebSocket.OPEN) {
+            let protocol_header_arr = [];
+            protocol_header_arr.push(protocol_header_1.charCodeAt());
+            protocol_header_arr.push(protocol_header_2.charCodeAt());
+            protocol_header_arr.push(SET_DAC0_VAL.charCodeAt());
+            protocol_header_arr.push(Math.round(parseInt(getByID("dac0-val").value, 10) / 3300 * 255, 0));
+            let arr = new Uint8Array(protocol_header_arr);
+            ws.send(arr);
+        }
     }
 
-    bindCallBackFun("save_config", saveConfig);
+    function onSetDac1() {
+        if (ws.readyState == WebSocket.OPEN) {
+            let protocol_header_arr = [];
+            protocol_header_arr.push(protocol_header_1.charCodeAt());
+            protocol_header_arr.push(protocol_header_2.charCodeAt());
+            protocol_header_arr.push(SET_DAC1_VAL.charCodeAt());
+            protocol_header_arr.push(Math.round(parseInt(getByID("dac1-val").value, 10) / 3300 * 255, 0));
+            let arr = new Uint8Array(protocol_header_arr);
+            ws.send(arr);
+        }
+    }
 
-    function saveConfig(event, that) {
-        var elementA = document.createElement("a");
-        elementA.download = "json相位配置文件" + new Date(Date.now()).toLocaleDateString("zh-CN", {hour12: false}) + ".json";
-        elementA.style.display = "none";
-        let sa = [sig.casSignalNum, sig.crsSignalNum];
-        let str = JSON.stringify(sa);
-        var blob = new Blob([str], {
-            type: "application/json",
-        });
-        elementA.href = URL.createObjectURL(blob);
-        document.body.appendChild(elementA);
-        elementA.click();
-        document.body.removeChild(elementA);
+    getByID("speed-target").addEventListener("change", onSeedTargetChange);
+
+    function onSeedTargetChange(e) {
+        let v = parseInt(getByID('speed-target').value, 10);
+        if (v > parseInt(getByID("speed-max").value, 10)) {
+            v = parseInt(getByID("speed-max").value, 10)
+        }
+        if (v < parseInt(getByID("speed-min").value, 10)) {
+            v = parseInt(getByID("speed-min").value, 10)
+        }
+        getByID('speed-target').value = v;
+        getByID("speedSlider").value = v;
+        onConfirm();
+    }
+
+    getByID("speedSlider").addEventListener("change", onSpeedSliderChange);
+
+    function onSpeedSliderChange(e) {
+        getByID("speed-target").value = getByID("speedSlider").value;
+        onSeedTargetChange(null);
+    }
+
+    getByID("btn-confirm").addEventListener("click", onConfirm);
+
+    function onConfirm() {
+        if (ws.readyState == WebSocket.OPEN) {
+            let protocol_header_arr = [];
+            protocol_header_arr.push(protocol_header_1.charCodeAt());
+            protocol_header_arr.push(protocol_header_2.charCodeAt());
+            protocol_header_arr.push(SET_SPEED.charCodeAt());
+            protocol_header_arr.push((parseInt(getByID("speed-target").value, 10) >> 8) & 0xff);
+            protocol_header_arr.push(parseInt(getByID("speed-target").value, 10) & 0xff);
+            let arr = new Uint8Array(protocol_header_arr);
+            ws.send(arr);
+        }
+    }
+
+    getByID("btn-update-cas").addEventListener("click", onUpdateCas)
+
+    function onUpdateCas() {
+        if (ws.readyState == WebSocket.OPEN) {
+            let protocol_header_arr = [];
+            protocol_header_arr.push(protocol_header_1.charCodeAt());
+            protocol_header_arr.push(protocol_header_2.charCodeAt());
+            protocol_header_arr.push(SET_CAS_MODEL.charCodeAt());
+            for (let i = 0; i < signals.option.series[0].data.length; i++) {
+                protocol_header_arr.push(signals.option.series[0].data[i]-signals.CAS_LO)
+            }
+            let arr = new Uint8Array(protocol_header_arr);
+            console.log(arr)
+            ws.send(arr);
+        }
+    }
+
+    getByID("btn-update-crs").addEventListener("click", onUpdateCrs)
+
+    function onUpdateCrs() {
+        if (ws.readyState == WebSocket.OPEN) {
+            let protocol_header_arr = [];
+            protocol_header_arr.push(protocol_header_1.charCodeAt());
+            protocol_header_arr.push(protocol_header_2.charCodeAt());
+            protocol_header_arr.push(SET_CRS_MODEL.charCodeAt());
+            for (let i = 0; i < signals.option.series[0].data.length; i++) {
+                protocol_header_arr.push(signals.option.series[1].data[i])
+            }
+            let arr = new Uint8Array(protocol_header_arr);
+            console.log(arr)
+            ws.send(arr);
+        }
+    }
+
+    getByID("btn-write-cas").addEventListener("click", onWriteCas)
+
+    function onWriteCas() {
+        if (ws.readyState == WebSocket.OPEN) {
+            let protocol_header_arr = [];
+            protocol_header_arr.push(protocol_header_1.charCodeAt());
+            protocol_header_arr.push(protocol_header_2.charCodeAt());
+            protocol_header_arr.push(SAVE_CAS_MODEL.charCodeAt());
+            for (let i = 0; i < signals.option.series[0].data.length; i++) {
+                protocol_header_arr.push(signals.option.series[0].data[i]-signals.CAS_LO)
+            }
+            let arr = new Uint8Array(protocol_header_arr);
+            console.log(arr)
+            ws.send(arr);
+        }
+    }
+
+    getByID("btn-write-crs").addEventListener("click", onWriteCrs)
+
+    function onWriteCrs() {
+        if (ws.readyState == WebSocket.OPEN) {
+            let protocol_header_arr = [];
+            protocol_header_arr.push(protocol_header_1.charCodeAt());
+            protocol_header_arr.push(protocol_header_2.charCodeAt());
+            protocol_header_arr.push(SAVE_CRS_MODEL.charCodeAt());
+            for (let i = 0; i < signals.option.series[0].data.length; i++) {
+                protocol_header_arr.push(signals.option.series[1].data[i])
+            }
+            let arr = new Uint8Array(protocol_header_arr);
+            console.log(arr)
+            ws.send(arr);
+        }
+    }
+
+    function showMesAlert(mes) {
+        getByID("mes-alert").innerText = mes
     }
 })();
